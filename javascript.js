@@ -4,8 +4,8 @@
 // Autocomplete: Datamuse suggestions (no key needed, doesn't use your Merriam-Webster limit)
 
 // >>> PUT YOUR FREE KEYS HERE (from dictionaryapi.com) <<<
-const MW_DICT_KEY = "YOUR_DICTIONARY_KEY";
-const MW_THES_KEY = "YOUR_THESAURUS_KEY";
+const MW_DICT_KEY = "22d93782-659b-474c-a1e8-260f10803f72";
+const MW_THES_KEY = "2d57909c-0d7d-472f-9fa7-8f6a457a06e1";
 
 const mwDictUrl = "https://www.dictionaryapi.com/api/v3/references/collegiate/json/";
 const mwThesUrl = "https://www.dictionaryapi.com/api/v3/references/thesaurus/json/";
