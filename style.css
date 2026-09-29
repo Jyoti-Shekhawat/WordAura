@@ -1,15 +1,14 @@
 body{
-    
-   
     font-family: Arial, Helvetica, sans-serif !important;
     text-align: left !important;
     font-size: xx-large !important;
-    margin-left: 50px !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
     margin-top: 20px !important;
+    padding-bottom: 60px;
     color: white !important;
-    background-size: cover; 
+    background-size: cover;
     background-image: url(black-1072366_1920.jpg);
-
 }
 
 #header{
@@ -17,14 +16,13 @@ body{
     display: flex !important;
     justify-content: center !important;
     margin-top: 90px !important;
-
-    
 }
+
 #input{
     text-align: center !important;
     height: 36px !important;
     width: 500px !important;
-    font-size:large;
+    font-size: large;
     margin-top: 20px !important;
 }
 
@@ -33,19 +31,19 @@ body{
     font-weight: bolder;
     color: rgb(117, 240, 247); /* Initial color */
     transition: all 0.3s ease; /* Smooth transition for the effects */
+    cursor: pointer; /* Shows the icon is clickable */
 }
 
 .fa-volume-high:hover {
     font-size: 38px; /* Increase the size when hovered */
-    color:rgb(163, 241, 245); /* Change the color when hovered */
+    color: rgb(163, 241, 245); /* Change the color when hovered */
 }
-
 
 #btn {
     text-align: center;
     margin-left: 10px;
     color: white;
-    background-color: rgb(140, 180, 70);;
+    background-color: rgb(140, 180, 70);
     height: 35px;
     width: 100px;
     font-size: large;
@@ -57,36 +55,45 @@ body{
 }
 
 #btn:hover {
-    background-color: rgb(162, 204, 76); /* Darker shade of the initial color */
-    color: white; /* Slightly lighter text color */
+    background-color: rgb(162, 204, 76);
+    color: white;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Adds a shadow effect */
-    transform: scale(1); /* Slightly scales up the button */
+    transform: scale(1);
 }
 
 #title{
-    text-align: center; 
-    font-weight:bolder;
-    font-size:150%
-    
+    text-align: center;
+    font-weight: bolder;
+    font-size: 150%;
 }
+
 #antonyms{
-    font-size:large;
-    text-align:left
+    font-size: large;
+    text-align: left;
 }
 
 #definition{
     font-size: large;
-    text-align:left
+    text-align: left;
 }
 
 #synonymList{
     font-size: large;
-    text-align:left 
+    text-align: left;
 }
 
 #antonymsList{
     font-size: large;
-    text-align:left 
+    text-align: left;
+}
+
+/* Examples list: same size as the other lists */
+#exampleList,
+#exampleList li{
+    font-size: large !important;
+    text-align: left;
+    font-style: italic;
+    color: #ddd;
 }
 
 .text{
@@ -97,66 +104,32 @@ body{
     color: yellowgreen;
     margin-top: 50px;
     margin-bottom: 50px;
-    
 }
 
 span{
-    padding: 10px;  
+    padding: 10px;
 }
 
 i{
     padding-right: 15px;
 }
 
-/* Pointer cursor so the speaker icon looks clickable */
-.fa-volume-high {
-    cursor: pointer;
-}
-
-/* Merriam-Webster credit, always at the bottom of the page */
-#credit {
-    position: fixed;
-    left: 0;
-    bottom: 0;
-    width: 100%;
-    margin: 0;
-    padding: 8px 0;
-    text-align: center;
-    font-size: 14px;
-    color: #aaa;
-    background: rgba(0, 0, 0, 0.7);
-}
-
-#credit a {
-    color: white;
-    text-decoration: none;
-}
-
-#credit a:hover {
-    text-decoration: underline;
-}
-
-/* keeps long results from hiding behind the credit bar */
-body {
-    padding-bottom: 60px;
-}
-
-#suggestions li:hover,
-#suggestions li.active {
-    background: rgb(140, 180, 70);
-}
-
-/* Examples list: same size as the other lists */
+/* Results: left-aligned, but pushed in from the left edge */
+#phonetics,
+#error,
+#definition,
 #exampleList,
-#exampleList li {
-    font-size: large !important;
-    text-align: left;
-    font-style: italic;
-    color: #ddd;
+#synonymList,
+#antonymsList,
+h5,
+p.text{
+    margin-left: 12%;
+    margin-right: 5%;
+    box-sizing: border-box;
 }
 
 /* Autocomplete dropdown */
-#suggestions {
+#suggestions{
     display: none;
     position: fixed;
     z-index: 1000;
@@ -172,7 +145,7 @@ body {
     overflow: hidden;
 }
 
-#suggestions li {
+#suggestions li{
     box-sizing: border-box;
     padding: 8px 14px;
     color: white;
@@ -184,6 +157,29 @@ body {
 }
 
 #suggestions li:hover,
-#suggestions li.active {
+#suggestions li.active{
     background: rgb(140, 180, 70);
+}
+
+/* Merriam-Webster credit, always at the bottom of the page */
+#credit{
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    margin: 0;
+    padding: 8px 0;
+    text-align: center;
+    font-size: 14px;
+    color: #aaa;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+#credit a{
+    color: yellowgreen;
+    text-decoration: none;
+}
+
+#credit a:hover{
+    text-decoration: underline;
 }
