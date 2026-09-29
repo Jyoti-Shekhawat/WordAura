@@ -107,3 +107,25 @@ span{
 i{
     padding-right: 15px;
 }
+
+/* Pointer cursor so the speaker icon looks clickable */
+.fa-volume-high {
+    cursor: pointer;
+}
+
+/* Merriam-Webster credit */
+#credit {
+    text-align: center;
+    font-size: 14px;
+    margin: 60px 0 20px;
+    color: #aaa;
+}
+
+#credit a {
+    color: yellowgreen;
+    text-decoration: none;
+}
+
+#credit a:hover {
+    text-decoration: underline;
+}
