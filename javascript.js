@@ -348,6 +348,7 @@ function renderSuggestions(words) {
     suggestBox.style.left = rect.left + "px";
     suggestBox.style.top = rect.bottom + "px";
     suggestBox.style.width = rect.width + "px";
+    suggestBox.style.display = "block";
 }
 
 function hideSuggestions() {
