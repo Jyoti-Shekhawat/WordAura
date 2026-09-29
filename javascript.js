@@ -344,10 +344,10 @@ function renderSuggestions(words) {
         suggestBox.appendChild(li);
     });
     // line the box up under the input
-    suggestBox.style.left = input.offsetLeft + "px";
-    suggestBox.style.top = input.offsetTop + input.offsetHeight + "px";
-    suggestBox.style.width = input.offsetWidth + "px";
-    suggestBox.style.display = "block";
+    let rect = input.getBoundingClientRect();
+    suggestBox.style.left = rect.left + "px";
+    suggestBox.style.top = rect.bottom + "px";
+    suggestBox.style.width = rect.width + "px";
 }
 
 function hideSuggestions() {
@@ -397,3 +397,6 @@ document.addEventListener("click", (e) => {
         hideSuggestions();
     }
 });
+
+window.addEventListener("resize", hideSuggestions);
+window.addEventListener("scroll", hideSuggestions, true);
