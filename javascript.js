@@ -1,233 +1,197 @@
+// WordAura - English dictionary
+// Main API:     Merriam-Webster (Collegiate Dictionary + Collegiate Thesaurus)
+// Fallback API: Datamuse (used if Merriam-Webster fails, the word isn't found, or no key is set)
 
-//Free dictionary
+// >>> PUT YOUR FREE KEYS HERE (from dictionaryapi.com) <<<
+const MW_DICT_KEY = "22d93782-659b-474c-a1e8-260f10803f72";
+const MW_THES_KEY = "2d57909c-0d7d-472f-9fa7-8f6a457a06e1";
 
-let url = "https://api.dictionaryapi.dev/api/v2/entries/en/";
+const mwDictUrl = "https://www.dictionaryapi.com/api/v3/references/collegiate/json/";
+const mwThesUrl = "https://www.dictionaryapi.com/api/v3/references/thesaurus/json/";
+const fallbackUrl = "https://api.datamuse.com/words";
 
 let btn = document.querySelector("#btn");
 let definitionList = document.querySelector("#definition");
 let synonymList = document.querySelector("#synonymList");
 let antonymsList = document.querySelector("#antonymsList");
 let errorElement = document.querySelector("#error");
+let div = document.querySelector("#phonetics");
+
 let hDef = document.createElement("h5");
 let hSyn = document.createElement("h5");
 let hAnt = document.createElement("h5");
-let noAntData=document.createElement("p");
-let noSynData=document.createElement("p");
-let prounonce=document.createElement("p")
-let text=document.createElement("span");
-let div= document.querySelector("#phonetics")
-let word="";
-let playBtn=document.querySelector("#playBtn")
-let icon=document.createElement("i");
+let noAntData = document.createElement("p");
+let noSynData = document.createElement("p");
+let text = document.createElement("span");
+let icon = document.createElement("i");
+let audio = null;
 
 noAntData.classList.add("text");
-noSynData.classList.add("text")
-let audio;
+noSynData.classList.add("text");
+icon.classList.add("fa-solid", "fa-volume-high");
 
 btn.addEventListener("click", async (event) => {
+    event.preventDefault();
+    let word = document.querySelector("#input").value.trim();
+    if (!word) return; // ignore empty searches
+
     try {
-        event.preventDefault()
-        await emptyList();
-        let word = document.querySelector("#input").value;
-        console.dir(document.querySelector("#input"))
+        emptyList();
         div.append(word);
         await Dictionary(word);
-        
     } catch (e) {
-        errorElement.innerText = e;
+        errorElement.innerText = e.message || e;
     }
 });
 
-async function emptyList() {
+// ---------- helpers ----------
+
+function emptyList() {
     errorElement.innerText = "";
     clearList(definitionList);
     clearList(synonymList);
     clearList(antonymsList);
-    clearList(div);
-    if (hDef.parentNode) {
-        hDef.parentNode.removeChild(hDef);
-    }
-    if (hSyn.parentNode) {
-        hSyn.parentNode.removeChild(hSyn);
-    }
-    if (hAnt.parentNode) {
-        hAnt.parentNode.removeChild(hAnt);
-    }
+    div.textContent = ""; // removes old word, phonetics text and icon
+    hDef.remove();
+    hSyn.remove();
+    hAnt.remove();
     noAntData.remove();
     noSynData.remove();
     audio = null;
-
-    
-} 
+}
 
 function clearList(list) {
-    while (list.childElementCount !== 0) {
+    while (list.firstChild) {
         list.removeChild(list.firstChild);
     }
 }
 
+// Shows a heading + up to 5 items in a list, or "no data found"
+function showWords(words, listEl, headingEl, title, emptyEl) {
+    headingEl.innerText = title;
+    headingEl.style.color = "yellowgreen";
+    listEl.insertAdjacentElement("beforebegin", headingEl);
+
+    if (words.length === 0) {
+        emptyEl.innerText = "no data found";
+        headingEl.insertAdjacentElement("afterend", emptyEl);
+        return;
+    }
+    for (let i = 0; i < words.length && i < 5; i++) {
+        let li = document.createElement("li");
+        li.innerText = words[i];
+        listEl.appendChild(li);
+    }
+}
+
+function showDefinitions(defs) {
+    hDef.innerText = "DEFINITION";
+    hDef.style.color = "yellowgreen";
+    definitionList.insertAdjacentElement("beforebegin", hDef);
+    defs.slice(0, 5).forEach((d) => {
+        let li = document.createElement("li");
+        li.innerText = d;
+        definitionList.appendChild(li);
+    });
+}
+
+// ---------- main flow ----------
+
 async function Dictionary(word) {
     try {
-        
-        let res = await axios.get(url + word);
-        let data = res.data;
-        console.log(data[0]);
-        await phoneticsText(data[0])
-        await phoneticsAudio(data[0])
-        if (data && data[0] && data[0].meanings) {
-            await RawData(data[0].meanings);
-        } 
+        await merriamWebster(word);
     } catch (e) {
-        
-        errorElement.innerText = (e+ "  :Sorry, we couldn't find definitions for the word you were looking for");
-      
-        
-       
-    }
-}
-
-async function RawData(data) {
-    
-    phoneticsText(data)
-    defination(data);
-    synonyms(data);
-    antonyms(data);
-}
-
-function defination(rawdata) {
-
-    
-    hDef.innerText = "DEFINITION";
-    hDef.style.color="yellowgreen"
-    definitionList.insertAdjacentElement("beforebegin", hDef);
-
-
-    for (let j = 0; j < rawdata.length; j++) {
-        let definitions = rawdata[j].definitions;
-        for (let i = 0; i < definitions.length; i++) {
-            if (definitionList.childElementCount<=4){
-            let liDefi = document.createElement("li");
-            liDefi.innerText = definitions[i].definition;
-            definitionList.appendChild(liDefi);
+        // Merriam-Webster failed / word not found / key missing -> try the fallback
+        console.log("Merriam-Webster failed:", e);
+        try {
+            emptyList();
+            div.append(word);
+            await fallbackDictionary(word);
+        } catch (e2) {
+            errorElement.innerText =
+                "Sorry, we couldn't find definitions for \"" + word + "\".";
         }
     }
 }
 
+// ---------- Merriam-Webster ----------
+
+// Merriam-Webster returns an array of entry OBJECTS when the word is found,
+// or an array of suggestion STRINGS when it isn't.
+function isEntries(data) {
+    return Array.isArray(data) && data.length > 0 && typeof data[0] === "object";
 }
-function synonyms(rawdata) {
-    
-    hSyn.innerText = "SYNONYMS";
-    hSyn.style.color="yellowgreen"
-    synonymList.insertAdjacentElement("beforebegin", hSyn);
-    let count = 0;
-    for (let j = 0; j < rawdata.length; j++) {
-        let synonyms = rawdata[j].synonyms;
-        if(synonyms.length>0){
-            count++;
-        for (let i = 0; i < synonyms.length; i++) {
-            if (synonymList.childElementCount<=4){
-            let lisyn = document.createElement("li");
-            lisyn.innerText = synonyms[i];
-            synonymList.appendChild(lisyn);
+
+// Audio files live in a folder that depends on the file name
+function mwAudioUrl(name) {
+    let folder;
+    if (name.startsWith("bix")) folder = "bix";
+    else if (name.startsWith("gg")) folder = "gg";
+    else if (/^[0-9_\W]/.test(name)) folder = "number";
+    else folder = name.charAt(0);
+    return "https://media.merriam-webster.com/audio/prons/en/us/mp3/" + folder + "/" + name + ".mp3";
+}
+
+async function merriamWebster(word) {
+    if (MW_DICT_KEY.startsWith("YOUR_")) throw new Error("No Merriam-Webster key set");
+
+    const w = encodeURIComponent(word);
+    const [dictRes, thesRes] = await Promise.allSettled([
+        axios.get(mwDictUrl + w + "?key=" + MW_DICT_KEY),
+        axios.get(mwThesUrl + w + "?key=" + MW_THES_KEY)
+    ]);
+
+    if (dictRes.status !== "fulfilled" || !isEntries(dictRes.value.data)) {
+        throw new Error("Word not found in Merriam-Webster");
+    }
+
+    // Keep entries for the searched word (ids look like "hello" or "run:1"); otherwise use all
+    let entries = dictRes.value.data;
+    let exact = entries.filter(
+        (en) => en.meta && en.meta.id && en.meta.id.split(":")[0].toLowerCase() === word.toLowerCase()
+    );
+    if (exact.length > 0) entries = exact;
+
+    // Phonetics text + audio (first one available)
+    for (let i = 0; i < entries.length; i++) {
+        let prs = entries[i].hwi && entries[i].hwi.prs;
+        if (!prs || prs.length === 0) continue;
+
+        if (prs[0].mw && !text.innerText) {
+            text.innerText = "\\" + prs[0].mw + "\\";
+            div.appendChild(text);
         }
-    }
-}
-}
-    if(count===0){
-       noSynData.innerText="no data found"   //when their is not data found in Antonyms
-       hSyn.insertAdjacentElement("afterend",noSynData)
-    }
-}
-function antonyms(rawdata) {
-    
-    hAnt.innerText = "ANTONYMS";
-    hAnt.style.color="yellowgreen"
-    antonymsList.insertAdjacentElement("beforebegin", hAnt);
-   let count = 0; 
-    for (let j = 0; j < rawdata.length; j++) {
-        let antonyms = rawdata[j].antonyms;
-        if(antonyms.length>0){
-              count++;
-        for (let i = 0; i < antonyms.length; i++) {
-            if (antonymsList.childElementCount<=4){
-            let liant = document.createElement("li");
-            liant.innerText = antonyms[i];
-            antonymsList.appendChild(liant);  
-    }
-    }
-    }
-}
-    if(count===0){
-        noAntData.innerText="no data found"   //when their is not data found in Antonyms
-        hAnt.insertAdjacentElement("beforeend",noAntData)
-    }
-}
-
-// async function phonetics(data){
-//     try{
-//         let count=0;
-//     let phonetics=data.phonetics;
-//     // console.log("phonetics", phonetics);
-//      for (i=0;i<phonetics.length;i++){
-
-//          if(phonetics[i].hasOwnProperty("text")==="true"){
-//            count++
-//             if(count==1 &&(phonetics[i].text!=="")){
-//          console.log("check",phonetics[i].hasOwnProperty("text"))
-//            text.innerText = phonetics[i].text
-//            div.appendChild(text);
-//         }
-//         }
-//         }
-     
-//     }catch(e) {
-//         console.log("error in phonetics", e)
-//     } 
-// }
-
-async function phoneticsText(data) {
-    try {
-      if (data && data.phonetics) { // Check if data and data.phonetics exist
-        let phonetics = data.phonetics;
-        let count = 0;
-        for (let i = 0; i < phonetics.length; i++) {
-          if (phonetics[i].hasOwnProperty("text")) {
-            count++;
-            if (count === 1 && phonetics[i].text !== "") {
-              text.innerText = phonetics[i].text;
-              div.appendChild(text);
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.log("error in phonetics", e);
-    }
-  }
-  
-
-async function phoneticsAudio(data) {
-    try {
-        let phonetics = data.phonetics;
-        let count = 0;
-        icon.classList.add("fa-solid", "fa-volume-high")
-        div.insertAdjacentElement("afterbegin", icon);
-        for (let i = 0; i < phonetics.length; i++) {
-            if (phonetics[i].hasOwnProperty("audio")) {
-                count++;
-                if (count>=1 && phonetics[i].audio !== "") {
-                    // console.log(phonetics[i].audio)
-                     audio = new Audio (phonetics[i].audio);
-                     
-                     
-                     
-                    
-                }
+        if (!audio) {
+            let p = prs.find((x) => x.sound && x.sound.audio);
+            if (p) {
+                audio = new Audio(mwAudioUrl(p.sound.audio));
+                div.insertAdjacentElement("afterbegin", icon);
             }
         }
-    } catch (e) {
-        console.log("error in phonetics", e);
     }
+
+    // Definitions (shortdef), with part of speech in front
+    let defs = [];
+    entries.forEach((en) => {
+        (en.shortdef || []).forEach((d) => {
+            defs.push(en.fl ? "(" + en.fl + ") " + d : d);
+        });
+    });
+    if (defs.length === 0) throw new Error("No definitions");
+    showDefinitions(defs);
+
+    // Synonyms and antonyms from the thesaurus (optional)
+    let syns = [];
+    let ants = [];
+    if (thesRes.status === "fulfilled" && isEntries(thesRes.value.data)) {
+        thesRes.value.data.forEach((en) => {
+            if (!en.meta) return;
+            (en.meta.syns || []).forEach((group) => syns.push(...group));
+            (en.meta.ants || []).forEach((group) => ants.push(...group));
+        });
+    }
+    showWords([...new Set(syns)], synonymList, hSyn, "SYNONYMS", noSynData);
+    showWords([...new Set(ants)], antonymsList, hAnt, "ANTONYMS", noAntData);
 }
 
 icon.addEventListener("click", () => {
@@ -235,3 +199,22 @@ icon.addEventListener("click", () => {
         audio.play();
     }
 });
+
+// ---------- fallback API (Datamuse) ----------
+
+async function fallbackDictionary(word) {
+    const w = encodeURIComponent(word);
+    const [defRes, synRes, antRes] = await Promise.all([
+        axios.get(`${fallbackUrl}?sp=${w}&md=d&max=1`),
+        axios.get(`${fallbackUrl}?rel_syn=${w}&max=5`),
+        axios.get(`${fallbackUrl}?rel_ant=${w}&max=5`)
+    ]);
+
+    const defs = (defRes.data[0] && defRes.data[0].defs) || [];
+    if (defs.length === 0) throw new Error("Word not found");
+
+    // Each definition looks like "n\tmeaning text" - keep the text after the tab
+    showDefinitions(defs.map((d) => d.split("\t")[1] || d));
+    showWords(synRes.data.map((x) => x.word), synonymList, hSyn, "SYNONYMS", noSynData);
+    showWords(antRes.data.map((x) => x.word), antonymsList, hAnt, "ANTONYMS", noAntData);
+}
