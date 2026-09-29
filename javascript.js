@@ -135,15 +135,17 @@ async function Dictionary(word) {
     try {
         await merriamWebster(word);
     } catch (e) {
-        // Merriam-Webster failed / word not found / key missing -> try the fallback
         console.log("Merriam-Webster failed:", e);
+        let reason = e.message || e;
         try {
             emptyList();
             div.append(word);
             await fallbackDictionary(word);
+            errorElement.style.fontSize = "16px";
+            errorElement.innerText = "Showing basic results. Merriam-Webster unavailable: " + reason;
         } catch (e2) {
             errorElement.innerText =
-                "Sorry, we couldn't find definitions for \"" + word + "\".";
+                "Sorry, we couldn't find definitions for \"" + word + "\". (" + reason + ")";
         }
     }
 }
@@ -204,7 +206,13 @@ async function merriamWebster(word) {
         axios.get(mwThesUrl + w + "?key=" + MW_THES_KEY)
     ]);
 
-    if (dictRes.status !== "fulfilled" || !isEntries(dictRes.value.data)) {
+       if (dictRes.status !== "fulfilled") {
+        throw new Error("Could not reach Merriam-Webster (" + (dictRes.reason && dictRes.reason.message) + ")");
+    }
+    if (typeof dictRes.value.data === "string") {
+        throw new Error("Merriam-Webster rejected the key: " + dictRes.value.data);
+    }
+    if (!isEntries(dictRes.value.data)) {
         throw new Error("Word not found in Merriam-Webster");
     }
 
