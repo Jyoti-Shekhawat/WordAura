@@ -34,12 +34,12 @@ body{
     cursor: pointer; /* Shows the icon is clickable */
 }
 
-.fa-volume-high:hover {
+.fa-volume-high:hover{
     font-size: 38px; /* Increase the size when hovered */
     color: rgb(163, 241, 245); /* Change the color when hovered */
 }
 
-#btn {
+#btn{
     text-align: center;
     margin-left: 10px;
     color: white;
@@ -54,7 +54,7 @@ body{
     transition: all 0.3s ease; /* Smooth transition for hover effects */
 }
 
-#btn:hover {
+#btn:hover{
     background-color: rgb(162, 204, 76);
     color: white;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Adds a shadow effect */
@@ -114,9 +114,51 @@ i{
     padding-right: 15px;
 }
 
+/* "Searching..." message */
+#loading{
+    display: none;
+    font-size: large;
+    color: yellowgreen;
+}
+
+/* Error / notice message */
+#error{
+    font-size: large;
+}
+
+/* "Did you mean: ..." row */
+#didYouMean{
+    font-size: large;
+    text-align: left;
+}
+
+/* Tappable words: synonyms, antonyms and "Did you mean" spellings */
+.clickable{
+    color: rgb(117, 240, 247);
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.clickable:hover,
+.clickable:focus{
+    color: rgb(163, 241, 245);
+    text-decoration: underline;
+    outline: none;
+}
+
+li.clickable{
+    width: fit-content;
+}
+
+#didYouMean span.clickable{
+    padding: 10px 8px;
+}
+
 /* Results: left-aligned, but pushed in from the left edge */
 #phonetics,
+#loading,
 #error,
+#didYouMean,
 #definition,
 #exampleList,
 #synonymList,
@@ -182,4 +224,64 @@ p.text{
 
 #credit a:hover{
     text-decoration: underline;
+}
+
+/* ---------- Mobile layout (phones and small tablets) ---------- */
+@media (max-width: 768px){
+    body{
+        font-size: x-large !important;
+        margin-top: 10px !important;
+    }
+
+    #title{
+        font-size: 130%;
+    }
+
+    /* search box + button fit the screen width */
+    .header form{
+        width: 92%;
+    }
+
+    #input{
+        width: auto !important;
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    #btn{
+        width: 85px;
+        margin-left: 6px;
+    }
+
+    /* smaller side margins so results use the screen */
+    #phonetics,
+    #loading,
+    #error,
+    #didYouMean,
+    #definition,
+    #exampleList,
+    #synonymList,
+    #antonymsList,
+    h5,
+    p.text{
+        margin-left: 6%;
+        margin-right: 6%;
+    }
+
+    #phonetics{
+        margin-top: 30px;
+        margin-bottom: 30px;
+    }
+
+    .fa-volume-high{
+        font-size: 28px;
+    }
+
+    .fa-volume-high:hover{
+        font-size: 30px;
+    }
+
+    #credit{
+        font-size: 12px;
+    }
 }
