@@ -281,10 +281,10 @@ p.text{
         font-size: 30px;
     }
 
-    /* Font colours: all screens */
+  /* Font colours and weight: all screens */
 :root{
-    --text-main: #d9d9d9;   /* off-white */
-    --text-green: #6fa315;  /* lemon-green */
+    --text-main: #ffffff;   /* pure white, strongest */
+    --text-green: #8ddc00;  /* vivid lemon-green */
 }
 
 body{
@@ -296,19 +296,19 @@ body{
 h5,
 #title i{
     color: var(--text-green) !important;
+    font-weight: bold;
 }
 
-/* example sentences */
+/* definitions, examples, synonym and antonym lists */
+#definition,
 #exampleList,
-#exampleList li{
+#exampleList li,
+#synonymList,
+#antonymsList{
     color: var(--text-main);
+    font-weight: 500;
 }
 
 #credit a{
     color: var(--text-green);
-}
-
-    #credit{
-        font-size: 12px;
-    }
 }
