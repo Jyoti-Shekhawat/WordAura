@@ -7,6 +7,7 @@
 const MW_DICT_KEY = "22d93782-659b-474c-a1e8-260f10803f72";
 const MW_THES_KEY = "2d57909c-0d7d-472f-9fa7-8f6a457a06e1";
 
+
 const mwDictUrl = "https://www.dictionaryapi.com/api/v3/references/collegiate/json/";
 const mwThesUrl = "https://www.dictionaryapi.com/api/v3/references/thesaurus/json/";
 const fallbackUrl = "https://api.datamuse.com/words";
@@ -21,13 +22,22 @@ let antonymsList = document.querySelector("#antonymsList");
 let errorElement = document.querySelector("#error");
 let div = document.querySelector("#phonetics");
 
-// The examples list is created here, so index.html needs no change
+// These elements are created here, so index.html needs no change
 let exampleList = document.querySelector("#exampleList");
 if (!exampleList) {
     exampleList = document.createElement("ul");
     exampleList.id = "exampleList";
     definitionList.insertAdjacentElement("afterend", exampleList);
 }
+
+let loadingEl = document.createElement("p"); // "Searching..." message
+loadingEl.id = "loading";
+loadingEl.innerText = "Searching...";
+errorElement.insertAdjacentElement("beforebegin", loadingEl);
+
+let didYouMeanEl = document.createElement("div"); // "Did you mean..." suggestions
+didYouMeanEl.id = "didYouMean";
+errorElement.insertAdjacentElement("afterend", didYouMeanEl);
 
 let hDef = document.createElement("h5");
 let hEx = document.createElement("h5");
@@ -45,6 +55,8 @@ icon.classList.add("fa-solid", "fa-volume-high");
 
 // ---------- search ----------
 
+let currentSearch = 0; // lets us ignore results from an older search
+
 btn.addEventListener("click", (event) => {
     event.preventDefault();
     hideSuggestions();
@@ -53,19 +65,28 @@ btn.addEventListener("click", (event) => {
 
 async function searchWord(word) {
     if (!word) return; // ignore empty searches
+    let id = ++currentSearch;
     try {
         emptyList();
         div.append(word);
-        await Dictionary(word);
+        showLoading(true);
+        await Dictionary(word, id);
     } catch (e) {
-        errorElement.innerText = e.message || e;
+        if (id === currentSearch) errorElement.innerText = e.message || e;
+    } finally {
+        if (id === currentSearch) showLoading(false);
     }
+}
+
+function showLoading(on) {
+    loadingEl.style.display = on ? "block" : "none";
 }
 
 // ---------- helpers ----------
 
 function emptyList() {
     errorElement.innerText = "";
+    clearList(didYouMeanEl);
     clearList(definitionList);
     clearList(exampleList);
     clearList(synonymList);
@@ -87,7 +108,30 @@ function clearList(list) {
     }
 }
 
-// Shows a heading + up to 5 items in a list, or "no data found"
+// Makes any element a tappable word: click (or Enter/Space) searches that word
+function makeClickable(el, word) {
+    el.innerText = word;
+    el.classList.add("clickable");
+    el.tabIndex = 0;
+    el.setAttribute("role", "button");
+    el.addEventListener("click", () => lookup(word));
+    el.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            lookup(word);
+        }
+    });
+    return el;
+}
+
+function lookup(word) {
+    input.value = word;
+    hideSuggestions();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    searchWord(word);
+}
+
+// Shows a heading + up to 5 clickable words, or "no data found"
 function showWords(words, listEl, headingEl, title, emptyEl) {
     headingEl.innerText = title;
     headingEl.style.color = "yellowgreen";
@@ -100,7 +144,7 @@ function showWords(words, listEl, headingEl, title, emptyEl) {
     }
     for (let i = 0; i < words.length && i < 5; i++) {
         let li = document.createElement("li");
-        li.innerText = words[i];
+        makeClickable(li, words[i]);
         listEl.appendChild(li);
     }
 }
@@ -129,23 +173,61 @@ function showExamples(examples) {
     });
 }
 
+// "Did you mean: ..." with clickable spellings
+function showDidYouMean(words) {
+    clearList(didYouMeanEl);
+    let label = document.createElement("span");
+    label.innerText = "Did you mean:";
+    didYouMeanEl.appendChild(label);
+    words.slice(0, 6).forEach((w) => {
+        didYouMeanEl.appendChild(makeClickable(document.createElement("span"), w));
+    });
+}
+
+// Similar spellings from Datamuse (used when nothing else found the word)
+async function datamuseSuggestions(word) {
+    try {
+        let res = await axios.get(suggestUrl + "?s=" + encodeURIComponent(word) + "&max=5");
+        return res.data
+            .map((x) => x.word)
+            .filter((w) => w.toLowerCase() !== word.toLowerCase());
+    } catch (e) {
+        return [];
+    }
+}
+
 // ---------- main flow ----------
 
-async function Dictionary(word) {
+async function Dictionary(word, id) {
     try {
-        await merriamWebster(word);
+        await merriamWebster(word, id);
     } catch (e) {
+        if (id !== currentSearch) return; // a newer search has started
         console.log("Merriam-Webster failed:", e);
+
+        // Merriam-Webster suggested similar spellings: offer those instead of a wrong result
+        if (e.suggestions && e.suggestions.length > 0) {
+            emptyList();
+            div.append(word);
+            errorElement.innerText = "No results for \"" + word + "\".";
+            showDidYouMean(e.suggestions);
+            return;
+        }
+
         let reason = e.message || e;
         try {
             emptyList();
             div.append(word);
-            await fallbackDictionary(word);
-            errorElement.style.fontSize = "16px";
-            errorElement.innerText = "Showing basic results. Merriam-Webster unavailable: " + reason;
+            await fallbackDictionary(word, id);
+            if (id !== currentSearch) return;
+            errorElement.innerText = "Showing basic results (" + reason + ").";
         } catch (e2) {
+            if (id !== currentSearch) return;
             errorElement.innerText =
                 "Sorry, we couldn't find definitions for \"" + word + "\". (" + reason + ")";
+            let similar = await datamuseSuggestions(word);
+            if (id !== currentSearch) return;
+            if (similar.length > 0) showDidYouMean(similar);
         }
     }
 }
@@ -197,7 +279,7 @@ function collectExamples(entries, max) {
     return out;
 }
 
-async function merriamWebster(word) {
+async function merriamWebster(word, id) {
     if (MW_DICT_KEY.startsWith("YOUR_")) throw new Error("No Merriam-Webster key set");
 
     const w = encodeURIComponent(word);
@@ -206,18 +288,23 @@ async function merriamWebster(word) {
         axios.get(mwThesUrl + w + "?key=" + MW_THES_KEY)
     ]);
 
-       if (dictRes.status !== "fulfilled") {
-        throw new Error("Could not reach Merriam-Webster (" + (dictRes.reason && dictRes.reason.message) + ")");
+    if (id !== currentSearch) return; // a newer search has started
+
+    if (dictRes.status !== "fulfilled") {
+        throw new Error("Could not reach Merriam-Webster: " + (dictRes.reason && dictRes.reason.message));
     }
-    if (typeof dictRes.value.data === "string") {
-        throw new Error("Merriam-Webster rejected the key: " + dictRes.value.data);
+    let data = dictRes.value.data;
+    if (typeof data === "string") {
+        throw new Error("Merriam-Webster rejected the key: " + data);
     }
-    if (!isEntries(dictRes.value.data)) {
-        throw new Error("Word not found in Merriam-Webster");
+    if (!isEntries(data)) {
+        let err = new Error("word not found in Merriam-Webster");
+        err.suggestions = Array.isArray(data) ? data.filter((x) => typeof x === "string") : [];
+        throw err;
     }
 
     // Keep entries for the searched word (ids look like "hello" or "run:1"); otherwise use all
-    let entries = dictRes.value.data;
+    let entries = data;
     let exact = entries.filter(
         (en) => en.meta && en.meta.id && en.meta.id.split(":")[0].toLowerCase() === word.toLowerCase()
     );
@@ -276,7 +363,7 @@ icon.addEventListener("click", () => {
 
 // ---------- fallback API (Datamuse) ----------
 
-async function fallbackDictionary(word) {
+async function fallbackDictionary(word, id) {
     const w = encodeURIComponent(word);
     const [defRes, synRes, antRes] = await Promise.all([
         axios.get(`${fallbackUrl}?sp=${w}&md=d&max=1`),
@@ -284,7 +371,12 @@ async function fallbackDictionary(word) {
         axios.get(`${fallbackUrl}?rel_ant=${w}&max=5`)
     ]);
 
-    const defs = (defRes.data[0] && defRes.data[0].defs) || [];
+    if (id !== currentSearch) return; // a newer search has started
+
+    // sp= matches similar spellings, so only accept the exact word
+    let first = defRes.data[0];
+    if (!first || first.word.toLowerCase() !== word.toLowerCase()) throw new Error("Word not found");
+    const defs = first.defs || [];
     if (defs.length === 0) throw new Error("Word not found");
 
     // Each definition looks like "n\tmeaning text" - keep the text after the tab
@@ -297,7 +389,7 @@ async function fallbackDictionary(word) {
 
 let suggestBox = document.createElement("ul");
 suggestBox.id = "suggestions";
-form.appendChild(suggestBox);
+document.body.appendChild(suggestBox); // attached to the page, not the form
 
 let suggestTimer = null;
 let suggestReq = 0;
@@ -322,8 +414,17 @@ async function fetchSuggestions(q) {
         if (id !== suggestReq) return; // a newer request replaced this one
         renderSuggestions(res.data.map((x) => x.word));
     } catch (e) {
+        console.log("Autocomplete failed:", e);
         hideSuggestions();
     }
+}
+
+// Line the box up exactly under the search input
+function positionSuggestions() {
+    let rect = input.getBoundingClientRect();
+    suggestBox.style.left = rect.left + "px";
+    suggestBox.style.top = rect.bottom + "px";
+    suggestBox.style.width = rect.width + "px";
 }
 
 function renderSuggestions(words) {
@@ -343,11 +444,7 @@ function renderSuggestions(words) {
         });
         suggestBox.appendChild(li);
     });
-    // line the box up under the input
-    let rect = input.getBoundingClientRect();
-    suggestBox.style.left = rect.left + "px";
-    suggestBox.style.top = rect.bottom + "px";
-    suggestBox.style.width = rect.width + "px";
+    positionSuggestions();
     suggestBox.style.display = "block";
 }
 
@@ -399,5 +496,10 @@ document.addEventListener("click", (e) => {
     }
 });
 
-window.addEventListener("resize", hideSuggestions);
-window.addEventListener("scroll", hideSuggestions, true);
+// Keep the box under the input if the window changes size or the page scrolls
+window.addEventListener("resize", () => {
+    if (suggestBox.style.display === "block") positionSuggestions();
+});
+window.addEventListener("scroll", () => {
+    if (suggestBox.style.display === "block") positionSuggestions();
+});
