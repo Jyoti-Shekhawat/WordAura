@@ -281,6 +281,33 @@ p.text{
         font-size: 30px;
     }
 
+    /* Font colours: all screens */
+:root{
+    --text-main: #d9d9d9;   /* off-white */
+    --text-green: #7fb51a;  /* lemon-green */
+}
+
+body{
+    color: var(--text-main) !important;
+}
+
+/* pronunciation line, section headings, title icon */
+#phonetics,
+h5,
+#title i{
+    color: var(--text-green) !important;
+}
+
+/* example sentences */
+#exampleList,
+#exampleList li{
+    color: var(--text-main);
+}
+
+#credit a{
+    color: var(--text-green);
+}
+
     #credit{
         font-size: 12px;
     }
